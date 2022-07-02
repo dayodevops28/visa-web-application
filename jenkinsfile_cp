@@ -1,0 +1,34 @@
+node{
+ def mavenHome = tool name: 'maven3.8.6'   
+ stage('1cloneCode'){
+    git "https://github.com/dayodevops28/tesla-web-application"
+ } 
+ stage('2Test&Build'){
+    sh "${mavenHome}/bin/mvn clean install"
+ } 
+ stage('3CodeQuality'){
+  sh "${mavenHome}/bin/mvn sonar:sonar"
+ }   
+ stage('4UploadArtifacts'){
+  sh "${mavenHome}/bin/mvn deploy"
+ } 
+  stage('5deploy_uat'){
+    //sh "scp "
+    deploy adapters: [tomcat9(credentialsId: 'tomcat-cred', path: '', url: 'http://172.31.19.152:8080/')], contextPath: null, war: 'target/*war'
+  }
+ stage('6Approval'){
+    timeout(time:6, unit:'HOURS') {
+        input message: 'Application ready for deployment, please review and approve'
+    }
+ }
+ stage('7deploy_prod'){
+     deploy adapters: [tomcat9(credentialsId: 'tomcat-cred', path: '', url: 'http://172.31.29.179:8080/')], contextPath: null, war: 'target/*war'
+ }
+ stage('8Notification'){
+    // Pipeline Syntax 
+    emailext body: '''Build status for frontend application.
+
+Regards,
+Dayo DevOps''', recipientProviders: [buildUser(), developers(), contributor()], subject: 'Build Status', to: 'dayo.adeboye@gmail.com'
+ }
+}
